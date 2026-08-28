@@ -156,6 +156,12 @@
     font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);
     font-weight:700;margin:20px 0 8px;
   }
+  .section-label-row{display:flex;align-items:center;justify-content:space-between;margin:20px 0 8px;}
+  .section-label-row .section-label{margin:0;}
+  .read-aloud-btn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--accent);
+    border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;
+  }
   .urgency-row{display:flex;gap:6px;margin-bottom:4px;}
 
   .banner{
@@ -357,17 +363,36 @@ function showToast(msg){
   clearTimeout(showToast._t);
   showToast._t = setTimeout(()=>t.classList.remove('show'), 2600);
 }
-function speak(msg){
-  if(!voiceFeedbackOn) return;
+function speakRaw(msg){
   try{
-    if(!('speechSynthesis' in window)) return;
+    if(!('speechSynthesis' in window)){ showToast('Synthèse vocale non disponible sur ce navigateur'); return; }
     const u = new SpeechSynthesisUtterance(msg);
     u.lang = 'fr-FR'; u.rate = 1.05;
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   }catch(e){}
 }
+function speak(msg){
+  if(!voiceFeedbackOn) return;
+  speakRaw(msg);
+}
 function feedback(msg){ showToast(msg); speak(msg); }
+
+function speakProjectTasks(projectId){
+  const p = getProject(projectId);
+  if(!p) return;
+  if(p.tasks.length === 0){
+    speakRaw(`Le projet ${p.name} n'a aucune tâche pour l'instant.`);
+    return;
+  }
+  const done = p.tasks.filter(t => t.done).length;
+  let text = `Projet : ${p.name}. Priorité ${URGENCY_LABEL[p.urgency]}. `
+    + `${done} tâche${done>1?'s':''} terminée${done>1?'s':''} sur ${p.tasks.length}. `;
+  p.tasks.forEach((t, i) => {
+    text += `Tâche ${i+1} : ${t.text}. ${t.done ? 'Terminée.' : 'À faire.'} `;
+  });
+  speakRaw(text);
+}
 
 /* ---------------- state mutations ---------------- */
 function createProject(name, urgency){
@@ -614,7 +639,10 @@ function renderDetail(projectId){
     <button class="urgency-pill ${p.urgency==='faible'?'selected':''}" data-u="faible">Peu urgent</button>
   </div>`;
 
-  html += `<div class="section-label">Tâches (${p.tasks.filter(t=>t.done).length}/${p.tasks.length})</div>`;
+  html += `<div class="section-label-row">
+    <div class="section-label">Tâches (${p.tasks.filter(t=>t.done).length}/${p.tasks.length})</div>
+    <button class="read-aloud-btn" id="readTasksBtn">🔊 Lire</button>
+  </div>`;
   if(p.tasks.length === 0){
     html += `<p style="color:var(--text-muted);font-size:13.5px;">Aucune tâche. Ajoutez-en une ci-dessous ou à la voix.</p>`;
   } else {
@@ -714,6 +742,7 @@ function attachEvents(){
     const p = getProject(view.projectId);
     if(!p) return;
     document.getElementById('backBtn').onclick = () => { view.screen='home'; render(); };
+    document.getElementById('readTasksBtn').onclick = () => speakProjectTasks(p.id);
     document.getElementById('editTitleBtn').onclick = () => {
       if(editingTitle){
         renameProject(p.id, document.getElementById('titleInput').value);
