@@ -168,10 +168,11 @@
   .btn-validate{background:var(--faible);color:#06180d;}
   .btn-dismiss{background:transparent;color:var(--text-muted);border:1px solid var(--border) !important;}
 
+  .task-item{border-bottom:1px solid var(--border);padding:2px 0 8px;}
+  .task-item:last-child{border-bottom:none;}
   .task-row{
-    display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:10px;padding:10px 4px 2px;
   }
-  .task-row:last-child{border-bottom:none;}
   .checkbox{
     width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;
     display:flex;align-items:center;justify-content:center;cursor:pointer;
@@ -182,6 +183,20 @@
   .task-del{color:var(--text-muted);background:none;border:none;cursor:pointer;padding:4px;flex-shrink:0;}
 
   .add-task-row{display:flex;gap:8px;margin-top:10px;}
+
+  .task-attachments{display:flex;flex-wrap:wrap;gap:6px;padding:2px 4px 0 40px;}
+  .attachment-chip{
+    display:flex;align-items:center;gap:5px;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:14px;padding:5px 6px 5px 9px;font-size:11.5px;cursor:pointer;max-width:170px;
+  }
+  .attachment-chip .att-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px;}
+  .attachment-chip .att-size{color:var(--text-muted);flex-shrink:0;}
+  .attachment-chip button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:2px;flex-shrink:0;}
+  .attach-btn{
+    display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--accent);
+    border:1px dashed var(--border);border-radius:14px;padding:5px 10px;cursor:pointer;
+  }
+  .attach-btn input{display:none;}
 
   .links-wrap{display:flex;flex-wrap:wrap;gap:8px;}
   .link-chip{
@@ -270,6 +285,62 @@ async function saveData(){
   catch(e){ console.error('Erreur de sauvegarde', e); showToast('Sauvegarde impossible sur cet appareil'); }
 }
 
+/* ---- fichiers joints (IndexedDB : les fichiers ne tiennent pas dans localStorage) ---- */
+const FILES_DB_NAME = 'feuille-de-route-files';
+const FILES_STORE = 'attachments';
+let filesDBPromise = null;
+function openFilesDB(){
+  if(filesDBPromise) return filesDBPromise;
+  filesDBPromise = new Promise((resolve, reject) => {
+    if(!('indexedDB' in window)){ reject(new Error('IndexedDB non supporté')); return; }
+    const req = indexedDB.open(FILES_DB_NAME, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(FILES_STORE)) db.createObjectStore(FILES_STORE, { keyPath:'id' });
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+  return filesDBPromise;
+}
+function storeFileBlob(id, file){
+  return openFilesDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(FILES_STORE, 'readwrite');
+    tx.objectStore(FILES_STORE).put({ id, blob:file, name:file.name, type:file.type });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+function getFileBlob(id){
+  return openFilesDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(FILES_STORE, 'readonly');
+    const req = tx.objectStore(FILES_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  }));
+}
+function deleteFileBlob(id){
+  return openFilesDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(FILES_STORE, 'readwrite');
+    tx.objectStore(FILES_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  })).catch(()=>{});
+}
+function formatBytes(bytes){
+  if(bytes < 1024) return bytes + ' o';
+  if(bytes < 1024*1024) return Math.round(bytes/1024) + ' Ko';
+  return (bytes/(1024*1024)).toFixed(1) + ' Mo';
+}
+function fileIcon(type){
+  if(!type) return '📄';
+  if(type.startsWith('image/')) return '🖼️';
+  if(type.startsWith('audio/')) return '🎤';
+  if(type.startsWith('video/')) return '🎞️';
+  if(type === 'application/pdf') return '📕';
+  return '📄';
+}
+
 /* ---------------- helpers ---------------- */
 function uid(p){ return p + '_' + Math.random().toString(36).slice(2,9); }
 function normalize(s){
@@ -331,9 +402,48 @@ function toggleTask(projectId, taskId){
 function deleteTask(projectId, taskId){
   const p = getProject(projectId);
   if(!p) return;
+  const t = p.tasks.find(x => x.id === taskId);
+  (t && t.attachments || []).forEach(a => deleteFileBlob(a.id));
   p.tasks = p.tasks.filter(t => t.id !== taskId);
   recomputeStatus(p);
   saveData();
+}
+async function addAttachment(projectId, taskId, file){
+  const p = getProject(projectId);
+  const t = p && p.tasks.find(x => x.id === taskId);
+  if(!p || !t || !file) return;
+  const id = uid('a');
+  try{
+    await storeFileBlob(id, file);
+  }catch(e){
+    console.error(e);
+    feedback('Impossible d’enregistrer ce fichier (espace insuffisant ?).');
+    return;
+  }
+  if(!t.attachments) t.attachments = [];
+  t.attachments.push({ id, name:file.name, type:file.type, size:file.size });
+  saveData();
+  feedback('Fichier joint.');
+  render();
+}
+async function removeAttachment(projectId, taskId, attId){
+  const p = getProject(projectId);
+  const t = p && p.tasks.find(x => x.id === taskId);
+  if(t) t.attachments = (t.attachments||[]).filter(a => a.id !== attId);
+  saveData();
+  await deleteFileBlob(attId);
+  render();
+}
+async function openAttachment(attId){
+  try{
+    const rec = await getFileBlob(attId);
+    if(!rec || !rec.blob){ showToast('Fichier introuvable'); return; }
+    const url = URL.createObjectURL(rec.blob);
+    window.open(url, '_blank');
+    setTimeout(()=>URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    showToast('Impossible d’ouvrir ce fichier');
+  }
 }
 function recomputeStatus(p){
   const allDone = p.tasks.length > 0 && p.tasks.every(t => t.done);
@@ -509,13 +619,29 @@ function renderDetail(projectId){
     html += `<p style="color:var(--text-muted);font-size:13.5px;">Aucune tâche. Ajoutez-en une ci-dessous ou à la voix.</p>`;
   } else {
     p.tasks.forEach(t => {
+      const atts = t.attachments || [];
       html += `
-      <div class="task-row">
-        <div class="checkbox ${t.done?'checked':''}" data-task="${t.id}">
-          ${t.done ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#06180d" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+      <div class="task-item">
+        <div class="task-row">
+          <div class="checkbox ${t.done?'checked':''}" data-task="${t.id}">
+            ${t.done ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#06180d" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+          </div>
+          <div class="task-text ${t.done?'done':''}">${escapeHtml(t.text)}</div>
+          <button class="task-del" data-deltask="${t.id}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>
         </div>
-        <div class="task-text ${t.done?'done':''}">${escapeHtml(t.text)}</div>
-        <button class="task-del" data-deltask="${t.id}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>
+        <div class="task-attachments">
+          ${atts.map(a => `
+            <div class="attachment-chip" data-open="${a.id}" title="${escapeHtml(a.name)}">
+              <span>${fileIcon(a.type)}</span>
+              <span class="att-name">${escapeHtml(a.name)}</span>
+              <span class="att-size">${formatBytes(a.size)}</span>
+              <button data-delatt="${a.id}" data-owner="${t.id}">✕</button>
+            </div>`).join('')}
+          <label class="attach-btn">
+            📎 Joindre
+            <input type="file" data-attach-task="${t.id}">
+          </label>
+        </div>
       </div>`;
     });
   }
@@ -611,6 +737,21 @@ function attachEvents(){
     });
     document.querySelectorAll('[data-deltask]').forEach(btn => {
       btn.onclick = () => { deleteTask(p.id, btn.dataset.deltask); render(); };
+    });
+    document.querySelectorAll('[data-attach-task]').forEach(input => {
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        if(file) addAttachment(p.id, input.dataset.attachTask, file);
+      };
+    });
+    document.querySelectorAll('[data-open]').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        if(e.target.closest('[data-delatt]')) return;
+        openAttachment(chip.dataset.open);
+      });
+    });
+    document.querySelectorAll('[data-delatt]').forEach(btn => {
+      btn.onclick = (e) => { e.stopPropagation(); removeAttachment(p.id, btn.dataset.owner, btn.dataset.delatt); };
     });
     document.getElementById('addTaskBtn').onclick = () => {
       const inp = document.getElementById('taskInput');
