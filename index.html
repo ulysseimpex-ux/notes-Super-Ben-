@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Feuille de route</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12161a;
+    --surface:#1a2027;
+    --surface-2:#222a32;
+    --border:#2c363f;
+    --text:#f2efe9;
+    --text-muted:#8b95a0;
+    --accent:#f2a63a;
+    --accent-dim:#3a2f1c;
+    --urgent:#e4572e;
+    --moyen:#f2a63a;
+    --faible:#4c9a6a;
+    --danger:#e4572e;
+    --radius:14px;
+    --font-display:'Oswald',sans-serif;
+    --font-body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    -webkit-tap-highlight-color:transparent;
+    padding-bottom:120px;
+  }
+  ::selection{background:var(--accent);color:#1a1a1a;}
+  button{font-family:inherit;}
+  .app-header{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(180deg,var(--bg) 70%,rgba(18,22,26,0));
+    padding:22px 18px 14px;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;
+  }
+  .brand{display:flex;flex-direction:column;gap:2px;}
+  .brand-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:26px;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    line-height:1;
+  }
+  .brand-title .dot{color:var(--accent);}
+  .brand-sub{font-size:12.5px;color:var(--text-muted);}
+  .icon-btn{
+    width:38px;height:38px;border-radius:50%;
+    border:1px solid var(--border);background:var(--surface);
+    color:var(--text-muted);display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;
+  }
+  .icon-btn.active{color:var(--accent);border-color:var(--accent);}
+  main{padding:0 18px;max-width:640px;margin:0 auto;}
+
+  /* ---- new project ---- */
+  .new-project-toggle{
+    width:100%;padding:14px 16px;border-radius:var(--radius);
+    border:1.5px dashed var(--border);background:transparent;
+    color:var(--text-muted);font-size:15px;font-weight:600;
+    display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:18px;
+    transition:border-color .15s,color .15s;
+  }
+  .new-project-toggle:hover{border-color:var(--accent);color:var(--accent);}
+  .new-project-form{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;margin-bottom:18px;display:flex;flex-direction:column;gap:12px;
+  }
+  .field-row{display:flex;gap:8px;}
+  .text-input{
+    flex:1;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:10px;padding:12px 14px;color:var(--text);font-size:15px;font-family:inherit;
+    outline:none;
+  }
+  .text-input:focus{border-color:var(--accent);}
+  .mic-inline{
+    width:44px;height:44px;border-radius:10px;border:1px solid var(--border);
+    background:var(--surface-2);color:var(--text-muted);display:flex;align-items:center;
+    justify-content:center;cursor:pointer;flex-shrink:0;
+  }
+  .mic-inline.listening{background:var(--urgent);color:#fff;border-color:var(--urgent);}
+  .urgency-select{display:flex;gap:6px;}
+  .urgency-pill{
+    flex:1;padding:9px 6px;border-radius:9px;border:1.5px solid var(--border);
+    background:transparent;color:var(--text-muted);font-size:12.5px;font-weight:600;cursor:pointer;
+    text-align:center;transition:.15s;
+  }
+  .urgency-pill[data-u="urgent"].selected{background:var(--urgent);border-color:var(--urgent);color:#fff;}
+  .urgency-pill[data-u="moyen"].selected{background:var(--moyen);border-color:var(--moyen);color:#1a1300;}
+  .urgency-pill[data-u="faible"].selected{background:var(--faible);border-color:var(--faible);color:#06180d;}
+  .primary-btn{
+    background:var(--accent);color:#1a1300;border:none;border-radius:10px;
+    padding:12px;font-weight:700;font-size:14.5px;cursor:pointer;
+  }
+  .ghost-btn{
+    background:transparent;color:var(--text-muted);border:none;font-size:13px;
+    padding:6px;cursor:pointer;text-decoration:underline;
+  }
+
+  /* ---- route / project list ---- */
+  .route{position:relative;padding-left:26px;}
+  .route-line{
+    position:absolute;left:5px;top:6px;bottom:6px;width:2px;
+    background-image:repeating-linear-gradient(to bottom,var(--border) 0 6px,transparent 6px 13px);
+  }
+  .project-card{
+    position:relative;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--radius);padding:15px 15px 13px;margin-bottom:12px;cursor:pointer;
+  }
+  .waypoint{
+    position:absolute;left:-26px;top:20px;width:13px;height:13px;border-radius:50%;
+    background:var(--marker,var(--faible));box-shadow:0 0 0 4px var(--bg);
+  }
+  .project-card.done{opacity:.6;}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .project-name{font-size:16.5px;font-weight:600;line-height:1.3;}
+  .project-name.strike{text-decoration:line-through;color:var(--text-muted);}
+  .badge{
+    font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+    padding:4px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0;
+  }
+  .badge.urgent{background:var(--urgent);color:#fff;}
+  .badge.moyen{background:var(--moyen);color:#1a1300;}
+  .badge.faible{background:var(--faible);color:#06180d;}
+  .badge.termine{background:var(--surface-2);color:var(--faible);border:1px solid var(--faible);}
+  .badge.proposition{background:var(--surface-2);color:var(--accent);border:1px solid var(--accent);}
+  .card-meta{margin-top:8px;font-size:12.5px;color:var(--text-muted);display:flex;align-items:center;gap:8px;}
+  .progress-track{flex:1;height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden;}
+  .progress-fill{height:100%;background:var(--accent);}
+
+  .empty-state{
+    text-align:center;padding:50px 20px;color:var(--text-muted);
+  }
+  .empty-state svg{opacity:.5;margin-bottom:10px;}
+  .empty-state p{font-size:14px;line-height:1.5;max-width:280px;margin:0 auto;}
+
+  /* ---- project detail ---- */
+  .detail-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .detail-title-row{display:flex;align-items:center;gap:8px;flex:1;}
+  .detail-title{font-family:var(--font-display);font-size:20px;font-weight:600;flex:1;}
+  .detail-title-input{
+    flex:1;background:var(--surface-2);border:1px solid var(--accent);border-radius:8px;
+    padding:8px 10px;color:var(--text);font-size:18px;font-family:var(--font-display);outline:none;
+  }
+  .section-label{
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);
+    font-weight:700;margin:20px 0 8px;
+  }
+  .urgency-row{display:flex;gap:6px;margin-bottom:4px;}
+
+  .banner{
+    background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--radius);
+    padding:14px;margin:16px 0;
+  }
+  .banner p{margin:0 0 10px;font-size:14px;line-height:1.4;}
+  .banner-actions{display:flex;gap:8px;}
+  .banner-actions button{flex:1;padding:10px;border-radius:9px;font-weight:700;font-size:13.5px;border:none;cursor:pointer;}
+  .btn-validate{background:var(--faible);color:#06180d;}
+  .btn-dismiss{background:transparent;color:var(--text-muted);border:1px solid var(--border) !important;}
+
+  .task-row{
+    display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border);
+  }
+  .task-row:last-child{border-bottom:none;}
+  .checkbox{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .checkbox.checked{background:var(--faible);border-color:var(--faible);}
+  .task-text{flex:1;font-size:14.5px;line-height:1.35;}
+  .task-text.done{text-decoration:line-through;color:var(--text-muted);}
+  .task-del{color:var(--text-muted);background:none;border:none;cursor:pointer;padding:4px;flex-shrink:0;}
+
+  .add-task-row{display:flex;gap:8px;margin-top:10px;}
+
+  .links-wrap{display:flex;flex-wrap:wrap;gap:8px;}
+  .link-chip{
+    display:flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:20px;padding:7px 10px 7px 12px;font-size:13px;cursor:pointer;
+  }
+  .link-chip button{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:0;display:flex;}
+  .add-link-select{
+    background:var(--surface-2);border:1px dashed var(--border);border-radius:20px;
+    padding:7px 12px;color:var(--text-muted);font-size:13px;
+  }
+
+  .danger-zone{margin-top:28px;}
+  .danger-btn{
+    background:transparent;border:1px solid var(--danger);color:var(--danger);
+    border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;
+  }
+  .confirm-inline{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text-muted);}
+  .confirm-inline button{border-radius:9px;padding:9px 12px;font-size:13px;font-weight:600;border:none;cursor:pointer;}
+
+  /* ---- mic FAB ---- */
+  .fab{
+    position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
+    width:64px;height:64px;border-radius:50%;background:var(--accent);color:#1a1300;
+    border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;
+    box-shadow:0 6px 20px rgba(242,166,58,.35);z-index:30;
+  }
+  .fab.listening{background:var(--urgent);color:#fff;box-shadow:0 0 0 8px rgba(228,87,46,.18);animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(228,87,46,.35);}100%{box-shadow:0 0 0 16px rgba(228,87,46,0);}}
+
+  .toast{
+    position:fixed;bottom:104px;left:50%;transform:translateX(-50%);
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:10px 16px;border-radius:10px;font-size:13px;max-width:85vw;text-align:center;
+    z-index:31;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+  .no-speech-note{font-size:11.5px;color:var(--text-muted);text-align:center;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="brand">
+    <div class="brand-title">Feuille de route<span class="dot">.</span></div>
+    <div class="brand-sub" id="brandSub">Chargement…</div>
+  </div>
+  <button class="icon-btn" id="voiceToggleBtn" title="Confirmations vocales">
+    <svg id="voiceToggleIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
+  </button>
+</div>
+
+<main id="main"></main>
+
+<button class="fab" id="fabMic" title="Dicter">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+    <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+  </svg>
+</button>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'projects-data';
+let state = { projects: [] };
+let view = { screen: 'home', projectId: null };
+let voiceFeedbackOn = true;
+let editingTitle = false;
+let pendingDelete = null; // project id awaiting delete confirmation
+
+const URGENCY_LABEL = { urgent:'Urgent', moyen:'Modéré', faible:'Peu urgent' };
+const URGENCY_ORDER = { urgent:0, moyen:1, faible:2 };
+
+/* ---------------- storage ---------------- */
+async function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){ /* pas encore de données, ou stockage bloqué (navigation privée) */ }
+  return { projects: [] };
+}
+async function saveData(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.error('Erreur de sauvegarde', e); showToast('Sauvegarde impossible sur cet appareil'); }
+}
+
+/* ---------------- helpers ---------------- */
+function uid(p){ return p + '_' + Math.random().toString(36).slice(2,9); }
+function normalize(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function getProject(id){ return state.projects.find(p => p.id === id); }
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function speak(msg){
+  if(!voiceFeedbackOn) return;
+  try{
+    if(!('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(msg);
+    u.lang = 'fr-FR'; u.rate = 1.05;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+function feedback(msg){ showToast(msg); speak(msg); }
+
+/* ---------------- state mutations ---------------- */
+function createProject(name, urgency){
+  name = (name||'').trim();
+  if(!name) return null;
+  const p = {
+    id: uid('p'), name, urgency: urgency || 'moyen',
+    status: 'active', completionDismissed:false,
+    tasks: [], links: [], createdAt: Date.now()
+  };
+  state.projects.push(p);
+  saveData();
+  return p;
+}
+function addTask(projectId, text){
+  const p = getProject(projectId);
+  text = (text||'').trim();
+  if(!p || !text) return;
+  p.tasks.push({ id: uid('t'), text, done:false });
+  recomputeStatus(p);
+  saveData();
+}
+function toggleTask(projectId, taskId){
+  const p = getProject(projectId);
+  if(!p) return;
+  const t = p.tasks.find(x => x.id === taskId);
+  if(!t) return;
+  t.done = !t.done;
+  recomputeStatus(p);
+  saveData();
+}
+function deleteTask(projectId, taskId){
+  const p = getProject(projectId);
+  if(!p) return;
+  p.tasks = p.tasks.filter(t => t.id !== taskId);
+  recomputeStatus(p);
+  saveData();
+}
+function recomputeStatus(p){
+  const allDone = p.tasks.length > 0 && p.tasks.every(t => t.done);
+  if(!allDone){
+    if(p.status !== 'active'){ p.status = 'active'; }
+    p.completionDismissed = false;
+  } else if(p.status === 'active' && !p.completionDismissed){
+    p.status = 'proposition';
+  }
+}
+function validateDone(projectId){
+  const p = getProject(projectId);
+  if(!p) return;
+  p.status = 'termine';
+  saveData();
+  feedback(`Projet « ${p.name} » marqué comme terminé.`);
+}
+function dismissProposal(projectId){
+  const p = getProject(projectId);
+  if(!p) return;
+  p.status = 'active';
+  p.completionDismissed = true;
+  saveData();
+}
+function setUrgency(projectId, urgency){
+  const p = getProject(projectId);
+  if(!p) return;
+  p.urgency = urgency;
+  saveData();
+}
+function renameProject(projectId, name){
+  const p = getProject(projectId);
+  name = (name||'').trim();
+  if(!p || !name) return;
+  p.name = name;
+  saveData();
+}
+function linkProjects(idA, idB){
+  const a = getProject(idA), b = getProject(idB);
+  if(!a || !b || idA === idB) return;
+  if(!a.links.includes(idB)) a.links.push(idB);
+  if(!b.links.includes(idA)) b.links.push(idA);
+  saveData();
+}
+function unlinkProjects(idA, idB){
+  const a = getProject(idA), b = getProject(idB);
+  if(a) a.links = a.links.filter(id => id !== idB);
+  if(b) b.links = b.links.filter(id => id !== idA);
+  saveData();
+}
+function deleteProject(projectId){
+  state.projects = state.projects.filter(p => p.id !== projectId);
+  state.projects.forEach(p => { p.links = p.links.filter(id => id !== projectId); });
+  saveData();
+}
+
+/* ---------------- rendering ---------------- */
+function render(){
+  document.getElementById('brandSub').textContent =
+    state.projects.length === 0 ? 'Aucun projet pour l’instant'
+    : `${state.projects.filter(p=>p.status!=='termine').length} en cours · ${state.projects.filter(p=>p.status==='termine').length} terminé(s)`;
+  document.getElementById('voiceToggleIcon').parentElement.classList.toggle('active', voiceFeedbackOn);
+
+  const main = document.getElementById('main');
+  main.innerHTML = view.screen === 'home' ? renderHome() : renderDetail(view.projectId);
+  attachEvents();
+}
+
+function renderHome(){
+  const sorted = [...state.projects].sort((a,b)=>{
+    const sa = a.status==='termine' ? 1 : 0, sb = b.status==='termine' ? 1 : 0;
+    if(sa !== sb) return sa - sb;
+    if(URGENCY_ORDER[a.urgency] !== URGENCY_ORDER[b.urgency]) return URGENCY_ORDER[a.urgency]-URGENCY_ORDER[b.urgency];
+    return b.createdAt - a.createdAt;
+  });
+
+  let html = `
+  <button class="new-project-toggle" id="toggleNewProject">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Nouveau projet
+  </button>
+  <div id="newProjectForm" style="display:none;">${renderNewProjectForm()}</div>`;
+
+  if(sorted.length === 0){
+    html += `
+    <div class="empty-state">
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 20l-5.5-2V4L9 6m0 14l6-2m-6 2V6m6 12l5.5 2V6L15 4m0 14V4m0 0L9 6"/></svg>
+      <p>Aucun projet pour l’instant. Touchez « Nouveau projet » ou appuyez sur le micro pour en créer un à la voix.</p>
+    </div>`;
+  } else {
+    html += `<div class="route"><div class="route-line"></div>`;
+    sorted.forEach(p => {
+      const done = p.tasks.length ? p.tasks.filter(t=>t.done).length : 0;
+      const pct = p.tasks.length ? Math.round(done/p.tasks.length*100) : 0;
+      html += `
+      <div class="project-card ${p.status==='termine'?'done':''}" data-project="${p.id}" style="--marker:var(--${p.urgency})">
+        <div class="waypoint"></div>
+        <div class="card-top">
+          <div class="project-name ${p.status==='termine'?'strike':''}">${escapeHtml(p.name)}</div>
+          ${p.status==='termine' ? '<span class="badge termine">Terminé ✓</span>'
+            : p.status==='proposition' ? '<span class="badge proposition">À valider</span>'
+            : `<span class="badge ${p.urgency}">${URGENCY_LABEL[p.urgency]}</span>`}
+        </div>
+        <div class="card-meta">
+          <span>${p.tasks.length ? `${done}/${p.tasks.length} tâches` : 'Aucune tâche'}</span>
+          ${p.tasks.length ? `<div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>` : ''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  return html;
+}
+
+function renderNewProjectForm(){
+  return `
+  <div class="new-project-form">
+    <div class="field-row">
+      <input type="text" class="text-input" id="npName" placeholder="Nom du projet">
+      <button class="mic-inline" id="npMic" title="Dicter le nom">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+      </button>
+    </div>
+    <div class="urgency-select" id="npUrgency">
+      <button class="urgency-pill" data-u="urgent">Urgent</button>
+      <button class="urgency-pill selected" data-u="moyen">Modéré</button>
+      <button class="urgency-pill" data-u="faible">Peu urgent</button>
+    </div>
+    <button class="primary-btn" id="npCreate">Créer le projet</button>
+  </div>`;
+}
+
+function renderDetail(projectId){
+  const p = getProject(projectId);
+  if(!p){ view.screen='home'; return renderHome(); }
+  const allDone = p.tasks.length>0 && p.tasks.every(t=>t.done);
+
+  let html = `
+  <div class="detail-header">
+    <button class="icon-btn" id="backBtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="detail-title-row">
+      ${editingTitle
+        ? `<input class="detail-title-input" id="titleInput" value="${escapeHtml(p.name)}">`
+        : `<div class="detail-title">${escapeHtml(p.name)}</div>`}
+      <button class="icon-btn" id="editTitleBtn" style="width:32px;height:32px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+    </div>
+  </div>`;
+
+  if(p.status === 'proposition'){
+    html += `
+    <div class="banner">
+      <p>Toutes les tâches sont cochées. Proposer « ${escapeHtml(p.name)} » comme <strong>projet terminé</strong> ?</p>
+      <div class="banner-actions">
+        <button class="btn-validate" id="btnValidate">Valider ✓</button>
+        <button class="btn-dismiss" id="btnDismiss">Pas encore</button>
+      </div>
+    </div>`;
+  } else if(p.status === 'termine'){
+    html += `<div class="banner" style="border-color:var(--faible);background:transparent;"><p style="margin:0;color:var(--faible);font-weight:600;">✓ Projet terminé — validé.</p></div>`;
+  }
+
+  html += `<div class="section-label">Priorité</div>
+  <div class="urgency-row" id="detailUrgency">
+    <button class="urgency-pill ${p.urgency==='urgent'?'selected':''}" data-u="urgent">Urgent</button>
+    <button class="urgency-pill ${p.urgency==='moyen'?'selected':''}" data-u="moyen">Modéré</button>
+    <button class="urgency-pill ${p.urgency==='faible'?'selected':''}" data-u="faible">Peu urgent</button>
+  </div>`;
+
+  html += `<div class="section-label">Tâches (${p.tasks.filter(t=>t.done).length}/${p.tasks.length})</div>`;
+  if(p.tasks.length === 0){
+    html += `<p style="color:var(--text-muted);font-size:13.5px;">Aucune tâche. Ajoutez-en une ci-dessous ou à la voix.</p>`;
+  } else {
+    p.tasks.forEach(t => {
+      html += `
+      <div class="task-row">
+        <div class="checkbox ${t.done?'checked':''}" data-task="${t.id}">
+          ${t.done ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#06180d" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>' : ''}
+        </div>
+        <div class="task-text ${t.done?'done':''}">${escapeHtml(t.text)}</div>
+        <button class="task-del" data-deltask="${t.id}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6"/></svg></button>
+      </div>`;
+    });
+  }
+  html += `
+  <div class="add-task-row">
+    <input type="text" class="text-input" id="taskInput" placeholder="Ajouter une tâche">
+    <button class="primary-btn" id="addTaskBtn" style="padding:0 16px;">+</button>
+  </div>`;
+
+  html += `<div class="section-label">Projets liés</div><div class="links-wrap" id="linksWrap">`;
+  p.links.forEach(lid => {
+    const lp = getProject(lid);
+    if(!lp) return;
+    html += `<div class="link-chip" data-goto="${lp.id}">${escapeHtml(lp.name)} <button data-unlink="${lp.id}">✕</button></div>`;
+  });
+  const linkable = state.projects.filter(op => op.id !== p.id && !p.links.includes(op.id));
+  if(linkable.length){
+    html += `<select class="add-link-select" id="linkSelect">
+      <option value="">+ Lier un projet…</option>
+      ${linkable.map(op=>`<option value="${op.id}">${escapeHtml(op.name)}</option>`).join('')}
+    </select>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="danger-zone">`;
+  if(pendingDelete === p.id){
+    html += `<div class="confirm-inline">Supprimer définitivement ce projet ?
+      <button class="danger-btn" id="confirmDelete">Oui, supprimer</button>
+      <button class="ghost-btn" id="cancelDelete">Annuler</button>
+    </div>`;
+  } else {
+    html += `<button class="danger-btn" id="askDelete">Supprimer le projet</button>`;
+  }
+  html += `</div>`;
+
+  return html;
+}
+
+/* ---------------- events ---------------- */
+function attachEvents(){
+  if(view.screen === 'home'){
+    document.getElementById('toggleNewProject').onclick = () => {
+      const f = document.getElementById('newProjectForm');
+      f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    };
+    document.querySelectorAll('.project-card').forEach(card => {
+      card.onclick = () => { view.screen='project'; view.projectId = card.dataset.project; editingTitle=false; pendingDelete=null; render(); };
+    });
+    const npUrgency = document.getElementById('npUrgency');
+    if(npUrgency){
+      npUrgency.querySelectorAll('.urgency-pill').forEach(btn => {
+        btn.onclick = () => { npUrgency.querySelectorAll('.urgency-pill').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); };
+      });
+    }
+    const npCreate = document.getElementById('npCreate');
+    if(npCreate){
+      npCreate.onclick = () => {
+        const name = document.getElementById('npName').value;
+        const u = npUrgency.querySelector('.selected').dataset.u;
+        if(!name.trim()){ showToast('Donnez un nom au projet'); return; }
+        const p = createProject(name, u);
+        feedback(`Projet « ${p.name} » créé.`);
+        document.getElementById('newProjectForm').style.display='none';
+        render();
+      };
+    }
+    const npMic = document.getElementById('npMic');
+    if(npMic) npMic.onclick = () => startRecognition(text => { document.getElementById('npName').value = text; });
+  } else {
+    const p = getProject(view.projectId);
+    if(!p) return;
+    document.getElementById('backBtn').onclick = () => { view.screen='home'; render(); };
+    document.getElementById('editTitleBtn').onclick = () => {
+      if(editingTitle){
+        renameProject(p.id, document.getElementById('titleInput').value);
+        editingTitle = false;
+      } else { editingTitle = true; }
+      render();
+    };
+    if(editingTitle){
+      const ti = document.getElementById('titleInput');
+      ti.focus();
+      ti.addEventListener('keydown', e => { if(e.key==='Enter'){ renameProject(p.id, ti.value); editingTitle=false; render(); }});
+    }
+    const bv = document.getElementById('btnValidate'); if(bv) bv.onclick = () => { validateDone(p.id); render(); };
+    const bd = document.getElementById('btnDismiss'); if(bd) bd.onclick = () => { dismissProposal(p.id); render(); };
+
+    document.querySelectorAll('#detailUrgency .urgency-pill').forEach(btn => {
+      btn.onclick = () => { setUrgency(p.id, btn.dataset.u); render(); };
+    });
+    document.querySelectorAll('.checkbox').forEach(cb => {
+      cb.onclick = () => { toggleTask(p.id, cb.dataset.task); render(); };
+    });
+    document.querySelectorAll('[data-deltask]').forEach(btn => {
+      btn.onclick = () => { deleteTask(p.id, btn.dataset.deltask); render(); };
+    });
+    document.getElementById('addTaskBtn').onclick = () => {
+      const inp = document.getElementById('taskInput');
+      if(inp.value.trim()){ addTask(p.id, inp.value); render(); }
+    };
+    document.getElementById('taskInput').addEventListener('keydown', e => {
+      if(e.key==='Enter' && e.target.value.trim()){ addTask(p.id, e.target.value); render(); }
+    });
+    document.querySelectorAll('[data-goto]').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        if(e.target.closest('[data-unlink]')) return;
+        view.projectId = chip.dataset.goto; editingTitle=false; pendingDelete=null; render();
+      });
+    });
+    document.querySelectorAll('[data-unlink]').forEach(btn => {
+      btn.onclick = (e) => { e.stopPropagation(); unlinkProjects(p.id, btn.dataset.unlink); render(); };
+    });
+    const linkSelect = document.getElementById('linkSelect');
+    if(linkSelect) linkSelect.onchange = () => {
+      if(linkSelect.value){ linkProjects(p.id, linkSelect.value); render(); }
+    };
+    const askDelete = document.getElementById('askDelete');
+    if(askDelete) askDelete.onclick = () => { pendingDelete = p.id; render(); };
+    const confirmDelete = document.getElementById('confirmDelete');
+    if(confirmDelete) confirmDelete.onclick = () => { deleteProject(p.id); pendingDelete=null; view.screen='home'; render(); };
+    const cancelDelete = document.getElementById('cancelDelete');
+    if(cancelDelete) cancelDelete.onclick = () => { pendingDelete=null; render(); };
+  }
+}
+
+/* ---------------- speech recognition (commands) ---------------- */
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizing = false;
+
+function startRecognition(onRawResult){
+  if(!SpeechRecognitionAPI){ showToast('Reconnaissance vocale non disponible sur ce navigateur'); return; }
+  const rec = new SpeechRecognitionAPI();
+  rec.lang = 'fr-FR';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  recognizing = true;
+  document.getElementById('fabMic').classList.add('listening');
+  rec.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    if(onRawResult) onRawResult(text);
+    else handleVoiceCommand(text);
+  };
+  rec.onerror = () => { showToast('Je n’ai pas compris, réessayez'); };
+  rec.onend = () => { recognizing = false; document.getElementById('fabMic').classList.remove('listening'); };
+  rec.start();
+}
+
+function findTaskMatch(project, spoken){
+  const n = normalize(spoken);
+  return project.tasks.find(t => normalize(t.text).includes(n) || n.includes(normalize(t.text)));
+}
+function findProjectMatch(spoken, excludeId){
+  const n = normalize(spoken);
+  return state.projects.find(p => p.id !== excludeId && (normalize(p.name).includes(n) || n.includes(normalize(p.name))));
+}
+function stripPrefix(text, patterns){
+  const nText = normalize(text);
+  for(const pat of patterns){
+    if(nText.startsWith(pat)){
+      return text.slice(pat.length).replace(/^[\s:.,-]+/, '').trim();
+    }
+  }
+  return null;
+}
+
+function handleVoiceCommand(rawText){
+  const text = rawText.trim();
+  if(!text) return;
+
+  if(view.screen === 'home'){
+    let name = stripPrefix(text, ['nouveau projet','creer un projet','cree un projet','ajoute un projet','ajouter un projet']);
+    if(name === null) name = text;
+    if(!name){ showToast('Nom de projet non compris'); return; }
+    const p = createProject(name, 'moyen');
+    feedback(`Projet « ${p.name} » créé.`);
+    render();
+    return;
+  }
+
+  // project detail screen
+  const p = getProject(view.projectId);
+  if(!p) return;
+
+  let rest = stripPrefix(text, ['nouvelle tache','nouvelle tâche','ajoute une tache','ajouter une tache','ajoute une tâche']);
+  if(rest !== null){
+    if(!rest){ showToast('Contenu de la tâche non compris'); return; }
+    addTask(p.id, rest);
+    feedback(`Tâche ajoutée : ${rest}.`);
+    render();
+    return;
+  }
+
+  rest = stripPrefix(text, ['tache terminee','tâche terminée','j ai termine','jai termine','marque comme termine','coche','termine']);
+  if(rest !== null){
+    if(!rest){ showToast('Précisez quelle tâche'); return; }
+    const match = findTaskMatch(p, rest);
+    if(match){
+      match.done = true;
+      recomputeStatus(p);
+      saveData();
+      feedback(`Tâche cochée : ${match.text}.`);
+    } else {
+      feedback('Tâche introuvable.');
+    }
+    render();
+    return;
+  }
+
+  rest = stripPrefix(text, ['lie ce projet a','lier a','relie a','lie a']);
+  if(rest !== null){
+    const match = findProjectMatch(rest, p.id);
+    if(match){
+      linkProjects(p.id, match.id);
+      feedback(`Projet lié à « ${match.name} ».`);
+    } else {
+      feedback('Aucun projet correspondant trouvé.');
+    }
+    render();
+    return;
+  }
+
+  const nText = normalize(text);
+  if(nText.startsWith('urgence') || nText.startsWith('priorite')){
+    if(nText.includes('urgent')){ setUrgency(p.id,'urgent'); feedback('Priorité : urgent.'); }
+    else if(nText.includes('faible') || nText.includes('peu urgent')){ setUrgency(p.id,'faible'); feedback('Priorité : peu urgent.'); }
+    else { setUrgency(p.id,'moyen'); feedback('Priorité : modérée.'); }
+    render();
+    return;
+  }
+
+  // par défaut : nouvelle tâche
+  addTask(p.id, text);
+  feedback(`Tâche ajoutée : ${text}.`);
+  render();
+}
+
+document.getElementById('fabMic').onclick = () => {
+  if(recognizing) return;
+  startRecognition(null);
+};
+document.getElementById('voiceToggleBtn').onclick = () => {
+  voiceFeedbackOn = !voiceFeedbackOn;
+  showToast(voiceFeedbackOn ? 'Confirmations vocales activées' : 'Confirmations vocales désactivées');
+  render();
+};
+
+/* ---------------- init ---------------- */
+(async function init(){
+  state = await loadData();
+  if(!SpeechRecognitionAPI){
+    const note = document.createElement('div');
+    note.className = 'no-speech-note';
+    note.textContent = 'La dictée vocale n’est pas prise en charge par ce navigateur (Chrome recommandé). La saisie au clavier reste disponible.';
+    document.body.insertBefore(note, document.getElementById('toast'));
+  }
+  render();
+})();
+</script>
+</body>
+</html>
